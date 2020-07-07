@@ -1,6 +1,6 @@
 # SimpleSphericalHeadHRTF
 A Matab implementation of a simple structural model of HRTF consisting of a spherical head model with optimal head radius and ear displacement.  
-Anthopometric personalisation: head width, head depth, ear positions.  
+Anthropometric personalisation: head width, head depth, ear positions.  
 Generates a SOFA formatted dataset (CIPIC spatial points).  
 START: run script "BrownDudaModel.m". Modify file paths.  
 Implemented papers:  
