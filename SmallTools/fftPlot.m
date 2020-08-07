@@ -10,8 +10,8 @@ figure
 for i = 1:n
     Xmag(i,:) = abs(fft(x(i,:))); 
     %smoo = sgolayfilt(Xmag(i,:), 5, 501);
-    plot(w(1:L/2), 20*log10(Xmag(i, 1:L/2)))
-    %semilogx(w(1:L/2), 20*log10(Xmag(i, 1:L/2)))
+    %plot(w(1:L/2), 20*log10(Xmag(i, 1:L/2)))
+    semilogx(w(1:L/2), 20*log10(Xmag(i, 1:L/2)))
     %plot(w(1:L/2), 20*log10(smoo(1:L/2)))
     hold on
 end

@@ -19,10 +19,10 @@ end
 tau = zeros(1, 5);
 for i = 1:5
     tau(i) = ( (A(i)*cos(az/2)*sin(D(i)*(deg2rad(90)-el)) + B(i)) );
-    tau(i) = round(tau(i)); % once frac delay implemented, can delete the rounding
-    if tau(i) == 0
-        tau(i) = 1;
-    end
+%     tau(i) = round(tau(i)); % once frac delay implemented, can delete the rounding
+%     if tau(i) == 0
+%         tau(i) = 1;
+%     end
 end
 
 % signal delay and amplitude

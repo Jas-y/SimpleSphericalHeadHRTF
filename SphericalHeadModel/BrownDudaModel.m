@@ -1,4 +1,4 @@
-close all
+% close all
 clear
 
 % Paper1: AN EFFICIENT HRTF MODEL FOR 3-D SOUND - C. Phillip Brown Richard 0. Duda
@@ -10,13 +10,15 @@ clear
 X1 = 13.6474; % head width (default: KEMAR)
 X3 = 19.7778; % head depth (default: KEMAR)
 k = 1; % k = {1,2}, pinna number
-az = 45; % [-180; 180] degrees (vertical-polar coordinate system with azimuth between [-180; 180] degrees)
+az = 18; % [-180; 180] degrees (vertical-polar coordinate system with azimuth between [-180; 180] degrees)
 el = 0; % [-90; 90] degrees
+pinna = 1; % boolean. apply pinna processing
 room = 0; % boolean. apply single reflexion (single "spatially unprocessed" echo). increases the length of the HRIR
 reflexion_delay = 15; % echo delay in [ms]
 reflexion_amp = 15; % echo attenuation in [dB]
 frac = 0; % boolean. process with fractional delay. for now, no frac delay is implemented
 L = 128; % number of samples of HRIR
+export = 0; % boolean. 0 = no save data, 1 = save data
 
 %% audio signal
 
@@ -54,25 +56,27 @@ x(abs(x) < eps) = 0;
 y(abs(y) < eps) = 0;
 z(abs(z) < eps) = 0;
 S = [x, y, z]; % source point 
-% S = [4, 6, 1.8]; 
+% S = [4, 6, 1.8];
 
 %% audio processing
 % HEAD -> PINNA -> ROOM
 
-% spherical head (head shadoe + itd)
+% spherical head (head shadow + itd)
 [head_l, delay_l] = sphericalHead(in, M, D_l, S, a, alfa_min, theta_min, fs, frac);
 [head_r, delay_r] = sphericalHead(in, M, D_r, S, a, alfa_min, theta_min, fs, frac);
 
 % pinna
-[az, el] = nav2sph(az, el); % to have az in interval [0,360]
-[az_vert, el_vert] = sph2hor(az, el); % conversion to interaural-polar coordinate system
-if el_vert > 90
-    el_vert = 180 - el_vert; % project to frontal half sphere
+if pinna
+    [az, el] = nav2sph(az, el); % to have az in interval [0,360]
+    [az_vert, el_vert] = sph2hor(az, el); % conversion to interaural-polar coordinate system
+    if el_vert > 90
+        el_vert = 180 - el_vert; % project to frontal half sphere
+    end
+    az_vert_rad = deg2rad(az_vert);
+    el_vert_rad = deg2rad(el_vert);
+    head_l = pinnaModel( head_l, az_vert_rad, el_vert_rad, fs, L, k );
+    head_r = pinnaModel( head_r, az_vert_rad, el_vert_rad, fs, L, k );
 end
-az_vert_rad = deg2rad(az_vert);
-el_vert_rad = deg2rad(el_vert);
-head_l = pinnaModel( head_l, az_vert_rad, el_vert_rad, fs, L, k );
-head_r = pinnaModel( head_r, az_vert_rad, el_vert_rad, fs, L, k );
 
 % room model
 if room
@@ -81,11 +85,11 @@ end
 
 %% plot
 
-figure
-plot(head_l)
-hold on
-plot(head_r)
-legend('left', 'right')
+% figure
+% plot(head_l)
+% hold on
+% plot(head_r)
+% legend('left', 'right')
 fftPlot([head_l'; head_r'], fs, {'left', 'right'})
 
 %% listen
@@ -93,20 +97,30 @@ fftPlot([head_l'; head_r'], fs, {'left', 'right'})
 output(:,1) = convolveFFT(in_music, head_l);
 output(:,2) = convolveFFT(in_music, head_r);
 output = output/max(abs(output(:)));
-%soundsc(output, fs)
+% soundsc(output, fs)
 
-%% generate dataset according Jesper's format
+%% generate dataset according to Jesper's format
 
-min_phase = 1; % boolean. 1 = minimum phase HRIRs, 0 = keep delays in HRIRs
+min_phase = 0; % boolean. 1 = minimum phase HRIRs, 0 = keep delays in HRIRs
 
-[ MP_L, MP_R, GD_L, GD_R ] = ConvertToHRIRdatabase( L, M, D_l, D_r, a, k, alfa_min, theta_min, fs, frac, min_phase );
+[ MP_L, MP_R, GD_L, GD_R, S ] = ConvertToHRIRdatabase( L, M, D_l, D_r, a, k, alfa_min, theta_min, fs, frac, min_phase, pinna );
+
+% plot all azimuths spectrum
+figure;imagesc_freq(MP_L(:,:,5),40,44100,0,'xlog');
+
+% % 3D scatter plot of spatial points
+% figure
+% scatter3(S(:,1),S(:,2),S(:,3),'filled')
+% view(40,35)
 
 % save dataset
-save('C:\Users\jytissieres\Documents\MATLAB\Spatial\HRIRdatasets\gnHRIRs\headSpherical', 'MP_L', 'MP_R', 'GD_L', 'GD_R');
-
+if export
+    save('C:\Users\jytissieres\Documents\MATLAB\Spatial\SimpleSphericalHeadHRTF\HRIRdatasets\headSpherical', 'MP_L', 'MP_R', 'GD_L', 'GD_R');
+end
 
 %% convert to SOFA file
 
-SphercialHead2CIPIC('C:\Users\jytissieres\Documents\MATLAB\Spatial\HRIRdatasets\sofaHRIRs', L, M, D_l, D_r, a, k, alfa_min, theta_min, fs, frac );
-
+if export
+    SphercialHead2CIPIC('C:\Users\jytissieres\Documents\MATLAB\Spatial\SimpleSphericalHeadHRTF\HRIRdatasets\sofaHRIRs', L, M, D_l, D_r, a, k, alfa_min, theta_min, fs, frac );
+end
 

@@ -1,4 +1,4 @@
-function [ MP_L, MP_R, GD_L, GD_R ] = ConvertToHRIRdatabase( L, M, D_l, D_r, a, k, alfa_min, theta_min, fs, frac, min_phase )
+function [ MP_L, MP_R, GD_L, GD_R, S ] = ConvertToHRIRdatabase( L, M, D_l, D_r, a, k, alfa_min, theta_min, fs, frac, min_phase, pinna )
 % Generates dataset of spherical head HRIR
 
 in = [1; zeros(L-1,1)]; % delta impulse
@@ -15,6 +15,8 @@ matrix_r = zeros(L, 181, 7);
 delays_l = zeros(181, 7);
 delays_r = zeros(181, 7);
 
+S = zeros(length(pairs), 3); 
+
 for i = 1:length(pairs)
     [az, el] =  sph2nav(pairs(i,1), pairs(i,2)); % az [-180, 180]
     az_rad = deg2rad(az);
@@ -27,22 +29,25 @@ for i = 1:length(pairs)
     z(abs(z)<eps)=0;
     
     % source position
-    S = [x, y, z];
+    S(i,:) = [x, y, z];
     
     % spherical head (head shadoe + itd)
-    [head_l, delay_l] = sphericalHead(in, M, D_l, S, a, alfa_min, theta_min, fs, frac);
-    [head_r, delay_r] = sphericalHead(in, M, D_r, S, a, alfa_min, theta_min, fs, frac);
+    [head_l, delay_l] = sphericalHead(in, M, D_l, S(i,:), a, alfa_min, theta_min, fs, frac);
+    [head_r, delay_r] = sphericalHead(in, M, D_r, S(i,:), a, alfa_min, theta_min, fs, frac);
+    
+    [az, el] = nav2sph(az, el); % az back to [0, 360]
     
     % pinna
-    [az, el] = nav2sph(az, el); % az back to [0, 360]
-    [az_vert, el_vert] = sph2hor(az, el); % conversion to interaural-polar coordinate system
-    if el_vert > 90
-        el_vert = 180 - el_vert; % project to frontal half sphere
+    if pinna
+        [az_vert, el_vert] = sph2hor(az, el); % conversion to interaural-polar coordinate system
+        if el_vert > 90
+            el_vert = 180 - el_vert; % project to frontal half sphere [-90; 90]
+        end
+        az_vert_rad = deg2rad(az_vert);
+        el_vert_rad = deg2rad(el_vert);
+        head_l = pinnaModel( head_l, az_vert_rad, el_vert_rad, fs, L, k );
+        head_r = pinnaModel( head_r, az_vert_rad, el_vert_rad, fs, L, k );
     end
-    az_vert_rad = deg2rad(az_vert);
-    el_vert_rad = deg2rad(el_vert);
-    head_l = pinnaModel( head_l, az_vert_rad, el_vert_rad, fs, L, k );
-    head_r = pinnaModel( head_r, az_vert_rad, el_vert_rad, fs, L, k );
     
     % conversion to minimum phase
     if min_phase
@@ -74,8 +79,8 @@ matrix_r = matrix_r/max(matrix_r(:));
 % return
 MP_L = matrix_l;
 MP_R = matrix_r;
-GD_L = delays_l;
-GD_R = delays_r;
+GD_L = 0;%delays_l;
+GD_R = 0;%delays_r;
 
 end
 
